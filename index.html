@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>BodyTrack · 围度日记</title>
+<!-- ① HTML 是页面内容；② style 是外观；③ script 是交互逻辑。无外部依赖。 -->
+<style>
+:root{color-scheme:light;--ink:#183f38;--green:#246a57;--muted:#52665f}*{box-sizing:border-box}body{margin:0;background:#f3f5ef;color:var(--ink);font:16px/1.6 system-ui,-apple-system,sans-serif}main{max-width:760px;margin:auto;padding:28px 18px 60px}header{padding:12px 0 24px}.eyebrow{font-size:12px;letter-spacing:2px;color:var(--muted)}h1{font-size:36px;letter-spacing:-1.5px;margin:4px 0}h2{font-size:21px;margin:0 0 12px}p{margin:8px 0}.muted,small{color:var(--muted)}.notice{background:#fff0cf;border:1px solid #dcc893;border-radius:14px;padding:14px}.card{background:#fff;border:1px solid #dbe3dc;border-radius:20px;padding:20px;margin:18px 0}.step{font-size:12px;color:var(--green);font-weight:700;letter-spacing:1px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,.download{border:0;border-radius:12px;padding:12px 17px;background:var(--green);color:#fff;font:inherit;font-weight:600;cursor:pointer;min-height:48px}button.secondary{background:#e9efea;color:var(--ink)}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #d49b39;outline-offset:3px}label{display:block;margin:12px 0 5px;font-weight:600}input,select{font:inherit;max-width:100%;width:100%;padding:11px;border:1px solid #aabbaf;border-radius:10px;background:white;color:var(--ink)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.viewport{background:#18342e;border-radius:16px;overflow:hidden;position:relative;aspect-ratio:3/4;max-height:500px;margin:14px auto;display:grid;place-items:center;color:#fff}.viewport video{width:100%;height:100%;object-fit:contain;position:absolute}.frame{position:absolute;inset:9% 20%;border:2px dashed #d3e5d0;border-radius:45% 45% 22% 22%;pointer-events:none}.caption{position:absolute;bottom:12px;background:#163d32e8;padding:5px 12px;border-radius:20px;font-size:13px}.shots{display:flex;gap:12px;margin:12px 0}.shots figure{margin:0;flex:1}.shots img{width:100%;border-radius:10px}figcaption{font-size:13px}.status{min-height:26px;color:#315c4d}table{border-collapse:collapse;width:100%;font-size:14px}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #e1e7e2;white-space:nowrap}.scroll{overflow:auto}td button{padding:4px 10px;min-height:40px}svg{width:100%;height:auto;display:block}summary{cursor:pointer;font-weight:600;min-height:44px}code{background:#edf1eb;border-radius:4px;padding:2px 5px;overflow-wrap:anywhere}li{margin:10px 0}[hidden]{display:none!important}@media(max-width:380px){.card{padding:15px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<header><div class="eyebrow">BODYTRACK / 第一版 · v0.1</div><h1>记录身体的变化。</h1><p class="muted">从一次认真记录开始，不急着给变化下结论。</p></header>
+<div class="notice"><strong>尚未实现自动测量</strong><br>拍摄仅用于体验引导流程，不会产生围度结果。下方数值必须来自你用软尺实际测量后的手动输入。</div>
+<section class="card"><div class="step">01 / 拍摄体验 · 可跳过</div><h2>先让镜头准备好</h2>
+<p class="muted">影像只在本页内存中处理，不上传、不存入相册或记录。刷新、离开页面或点击“清除照片”后删除。不开启麦克风。</p>
+<label for="facing">选择镜头</label><select id="facing"><option value="user">前置镜头 · 自己操作</option><option value="environment">后置镜头 · 有人协助</option></select>
+<p id="guide">将手机固定，光线均匀，全身进入画面。先拍正面，再拍侧面。虚线只是构图参考，没有人体识别功能。</p>
+<div class="viewport"><span id="placeholder">相机尚未开启</span><video id="video" autoplay muted playsinline></video><div class="frame" aria-hidden="true"></div><span class="caption" id="pose">第 1 步 · 正面，自然站立</span></div>
+<div class="row"><button id="start">开始扫描（仅拍摄体验）</button><button id="capture" disabled>5 秒后拍正面</button><button id="stop" class="secondary" disabled>关闭相机</button><button id="clearPhotos" class="secondary">清除照片 / 重新拍摄</button></div>
+<p id="cameraStatus" class="status" role="status" aria-live="polite"></p><div id="shots" class="shots"></div>
+</section>
+<section class="card"><div class="step">02 / 手动测量</div><h2>留下今天的记录</h2><p class="muted">单位为厘米（cm）。尽量保持测量位置、姿势和时间一致。腰围必填，其他可留空；同一天可以记录多次。</p>
+<form id="form"><label for="date">测量日期</label><input id="date" type="date" required><div class="grid"><div><label for="waist">腰围（cm）*</label><input id="waist" type="number" inputmode="decimal" min="1" max="300" step="0.1" required placeholder="软尺实际读数"></div><div><label for="hip">臀围（cm）</label><input id="hip" type="number" inputmode="decimal" min="1" max="300" step="0.1" placeholder="选填"></div><div><label for="chest">胸围（cm）</label><input id="chest" type="number" inputmode="decimal" min="1" max="300" step="0.1" placeholder="选填"></div></div><p><small>1–300 cm 只是防止误输入的范围，不是健康标准。</small></p><button type="submit" id="save">保存手动记录</button></form><p id="saveStatus" class="status" role="status"></p>
+<p><small>记录保存在此浏览器的本地存储中，未加密，不会自动同步。清除网站数据、使用无痕模式或更换网址 / 浏览器可能导致记录丢失，请定期导出。</small></p></section>
+<section class="card"><div class="step">03 / 变化趋势</div><h2>你的记录，你的节奏</h2><label for="metric">查看项目</label><select id="metric"><option value="waist">腰围</option><option value="hip">臀围</option><option value="chest">胸围</option></select><p id="summary" class="muted"></p><div id="chart"></div><p><small>仅显示真实手动记录；不对健康状况作判断。横轴按实际测量日期，纵轴为围度（cm）。同日多次测量会显示在同一日期。</small></p><div class="scroll"><table><thead><tr><th>日期</th><th>腰围</th><th>臀围</th><th>胸围</th><th>操作</th></tr></thead><tbody id="history"></tbody></table></div><p id="empty">还没有记录，保存第一条后会出现在这里。</p><button id="export" class="secondary">导出 CSV 备份</button><p id="dataStatus" class="status" role="status"></p></section>
+<section class="card"><details><summary>第一次打开？Mac → iPhone 使用步骤</summary><ol><li>把这个文件保存为 <code>index.html</code>。在 Mac 上双击，可先检查界面和手动记录。</li><li>在 GitHub 新建一个名为 <code>bodytrack</code> 的空 public 仓库，只上传这个 <code>index.html</code>，提交更改。公开的是源码，切勿上传身体照片或 CSV 记录。</li><li>仓库 Settings → Pages → Build and deployment：Source 选择 Deploy from a branch，Branch 选择 main，目录选择 / (root)，保存。</li><li>等待 Pages 显示发布成功及网址，用 iPhone 的 Safari 打开这个 HTTPS 网址（不要在聊天软件内嵌预览中测试）。</li><li>点击“开始扫描”，允许相机权限。拍完正面、侧面后相机会自动关闭。也可以拒绝相机，直接手动记录。</li><li>以后始终用同一个网址和浏览器。这里只提供网页，不需要安装原生 App。</li></ol><p>如果被拒绝权限，请在 Safari 此网站的权限设置中允许相机，再重试。普通局域网 HTTP 地址无法可靠开启手机相机。</p></details></section>
+<section class="card"><details><summary>跟着理解代码：今天只学一个小改动</summary><p>用 Mac 的纯文本编辑器打开文件（例如“文本编辑”切换到纯文本模式）。这不是 Python 文件，不在 IDLE 里运行。</p><ol><li><code>&lt;body&gt;</code> 内是按钮、标题和表单，类似界面的清单。</li><li><code>&lt;style&gt;</code> 内控制颜色和布局。试着把 <code>--green:#246a57</code> 改成 <code>--green:#365ba8</code>，保存并刷新，按钮会变蓝。</li><li><code>&lt;script&gt;</code> 内是 JavaScript，浏览器直接运行。<code>record</code> 是一个对象，类似 Python 字典；<code>records</code> 是数组，类似 Python 列表；<code>for...of</code> 类似 Python 的 for 循环。</li><li>先读代码中“保存记录”这一段：读取输入 → 组成对象 → 加到数组 → 保存 → 更新画面。</li></ol><p>验证清单：允许 / 拒绝相机、倒计时中关闭、正侧面拍摄、清除照片、空腰围被拦截、保存后刷新仍存在、删除、CSV 导出。真实 iPhone 的相机体验需要在你的设备上验证。</p><p>后续顺序：先完善手动记录 → 独立验证腰围估计算法 → 与软尺对照并评估多次重复测量误差 → 再决定是否做原生 App。单张照片无法直接提供可靠的真实围度。</p></details></section>
+</main>
+<script>
+'use strict';
+// ④ 找到页面元素。$ 是我们给这个短函数起的名字。
+const $ = id => document.getElementById(id);
+const KEY = 'bodytrack.records.v1';
+const fields = ['waist','hip','chest'];
+const names = {waist:'腰围',hip:'臀围',chest:'胸围'};
+let records = [];
+const today = new Date();
+$('date').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+function validRecord(r) {
+  return r && typeof r.id === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.source === 'manual' &&
+    fields.every(k => (k !== 'waist' && r[k] === null) || (typeof r[k] === 'number' && Number.isFinite(r[k]) && r[k]>=1 && r[k]<=300));
+}
+try {
+  const raw = localStorage.getItem(KEY);
+  if (raw !== null) { const parsed = JSON.parse(raw); if (!Array.isArray(parsed) || !parsed.every(validRecord)) throw Error('invalid'); records = parsed; }
+} catch (error) {
+  $('saveStatus').textContent = '无法读取本地记录（存储受限或数据损坏）。为避免覆盖旧数据，本页暂停保存，请先检查浏览器设置。';
+  $('save').disabled = true;
+}
+// 先写入成功，再更新内存和界面；存储失败时不宣称保存成功。
+function persist(next) {
+  try { localStorage.setItem(KEY,JSON.stringify(next)); records=next; render(); return true; }
+  catch(error) { $('saveStatus').textContent='保存失败：浏览器存储不可用或空间不足。请保留输入，检查设置后重试。'; return false; }
+}
+// ⑤ 保存记录：对象相当于 Python 字典，数组相当于列表。
+$('form').addEventListener('submit', event => {
+  event.preventDefault();
+  const record = {id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), date:$('date').value, source:'manual'};
+  for (const field of fields) record[field] = $(field).value === '' ? null : Number($(field).value);
+  if (!validRecord(record)) { $('saveStatus').textContent='请检查日期和围度输入。'; return; }
+  if (persist([...records,record])) { for (const field of fields) $(field).value=''; $('saveStatus').textContent='已保存手动记录。没有保存照片。'; }
+});
+// ⑥ 画表格和真实数据趋势。没有记录时，不生成演示数据。
+function render() {
+  const ordered = [...records].sort((a,b)=>a.date.localeCompare(b.date));
+  $('history').replaceChildren(); $('empty').hidden = records.length>0; $('export').disabled=records.length===0;
+  for(const r of [...ordered].reverse()) {
+    const row=document.createElement('tr');
+    for(const value of [r.date,r.waist,r.hip,r.chest]) { const td=document.createElement('td'); td.textContent=value===null?'—':value; row.append(td); }
+    const td=document.createElement('td'),button=document.createElement('button'); button.textContent='删除';button.className='secondary';button.setAttribute('aria-label',`删除 ${r.date} 腰围 ${r.waist} cm 的记录`);
+    button.onclick=()=>{if(confirm(`删除 ${r.date} 的这条记录？此操作无法撤销。`)) { if(persist(records.filter(item=>item.id!==r.id))) $('dataStatus').textContent='已删除记录。'; }};
+    td.append(button); row.append(td); $('history').append(row);
+  }
+  const key=$('metric').value, points=ordered.filter(r=>r[key]!==null);
+  $('chart').replaceChildren();
+  if(points.length<2) { $('summary').textContent=points.length===0?'尚无此项目的记录。':'已记录 1 次；至少 2 次记录才能展示变化趋势。';return; }
+  const diff=points.at(-1)[key]-points[0][key];
+  $('summary').textContent=`共 ${points.length} 次 · 最新 ${points.at(-1)[key]} cm · 相比首次 ${diff>0?'+':''}${diff.toFixed(1)} cm`;
+  const vals=points.map(r=>r[key]), low=Math.max(0,Math.min(...vals)-2), high=Math.max(...vals)+2;
+  const time=r=>Date.parse(r.date+'T00:00:00Z'), t0=time(points[0]), t1=time(points.at(-1));
+  const xy=points.map(r=>[t1===t0?270:55+430*(time(r)-t0)/(t1-t0),155-120*(r[key]-low)/(high-low)]);
+  const ns='http://www.w3.org/2000/svg', svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 540 205');svg.setAttribute('role','img');svg.setAttribute('aria-label',`${names[key]}趋势；详细值见下方表格。纵轴 ${low.toFixed(1)} 到 ${high.toFixed(1)} 厘米。`);
+  function add(tag,attrs,text){const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);if(text)n.textContent=text;svg.append(n);}
+  for(const [y,value] of [[35,high],[155,low]]){add('line',{x1:55,x2:485,y1:y,y2:y,stroke:'#dce4dd'});add('text',{x:2,y:y+4,fill:'#52665f','font-size':13},value.toFixed(1));}
+  add('polyline',{points:xy.map(p=>p.join(',')).join(' '),fill:'none',stroke:'#246a57','stroke-width':3});
+  xy.forEach(([cx,cy])=>add('circle',{cx,cy,r:4,fill:'#246a57'}));
+  add('text',{x:55,y:188,'font-size':13,fill:'#52665f'},points[0].date);
+  add('text',{x:485,y:188,'text-anchor':'end','font-size':13,fill:'#52665f'},points.at(-1).date);
+  $('chart').append(svg);
+}
+$('metric').onchange=render;
+$('export').onclick=()=>{
+  const lines=['date,waist_cm,hip_cm,chest_cm,source',...records.map(r=>[r.date,r.waist,r.hip??'',r.chest??'',r.source].join(','))];
+  const url=URL.createObjectURL(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download='bodytrack-records.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  $('dataStatus').textContent='已请求导出，请在浏览器下载 / 分享界面保存 CSV。文件包含围度数据，请自行妥善保管。';
+};
+// ⑦ 相机仅预览和拍摄；这里没有任何自动测量、上传或音频代码。
+let stream=null, requestId=0, timer=null, photos=[];
+function updateCapture(){ $('capture').disabled=!stream || photos.length>=2 || timer!==null; $('capture').textContent=photos.length===0?'5 秒后拍正面':photos.length===1?'5 秒后拍侧面':'拍摄完成'; }
+function stopCamera(message='相机已关闭。') {
+  requestId++; clearInterval(timer);timer=null;
+  if(stream)for(const track of stream.getTracks())track.stop();
+  stream=null;$('video').srcObject=null;$('placeholder').hidden=false;$('start').disabled=false;$('stop').disabled=true;$('facing').disabled=false;
+  updateCapture();$('cameraStatus').textContent=message;
+}
+$('start').onclick=async()=>{
+  if(!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { $('cameraStatus').textContent='相机不可用：请用 Safari 打开已发布的 HTTPS 网页。仍可手动记录。';return; }
+  const token=++requestId;$('start').disabled=true;$('stop').disabled=false;$('facing').disabled=true;$('cameraStatus').textContent='等待相机权限。可以允许、拒绝，或点击关闭相机取消。';
+  try {
+    const incoming=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:$('facing').value}},audio:false});
+    if(token!==requestId){incoming.getTracks().forEach(t=>t.stop());return;}
+    stream=incoming;$('video').srcObject=stream;await $('video').play();
+    if(token!==requestId)return;
+    $('placeholder').hidden=true;updateCapture();$('cameraStatus').textContent='相机已开启。按拍摄按钮后有 5 秒时间站好。';
+  }catch(error){ if(token!==requestId)return; const messages={NotAllowedError:'未获得相机权限。可在网站设置中允许后重试，也可直接手动记录。',NotFoundError:'没有找到可用相机。',NotReadableError:'无法读取相机，可能被其他应用占用。请关闭后重试。'};stopCamera(messages[error.name]||'相机启动失败，请用 Safari 的 HTTPS 页面重试。'); }
+};
+$('stop').onclick=()=>stopCamera();
+$('capture').onclick=()=>{
+  if(!stream || timer!==null || photos.length>=2)return;
+  let seconds=5;$('cameraStatus').textContent=`${seconds} 秒后拍摄，请自然站立。`;
+  timer=setInterval(()=>{
+    seconds--;if(seconds>0){$('cameraStatus').textContent=`${seconds} 秒后拍摄，请自然站立。`;return;}
+    clearInterval(timer);timer=null;
+    const video=$('video');
+    if(!stream || video.readyState<2 || !video.videoWidth){$('cameraStatus').textContent='画面尚未准备好，请重试。';updateCapture();return;}
+    const canvas=document.createElement('canvas'),scale=Math.min(1,960/video.videoWidth);canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);
+    canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+    const label=photos.length===0?'正面':'侧面'; const data=canvas.toDataURL('image/jpeg',.8);photos.push(data);
+    const figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption');img.src=data;img.alt=label+'照片，仅保存在本页内存';caption.textContent=label+' · 临时预览';figure.append(img,caption);$('shots').append(figure);canvas.width=canvas.height=0;
+    if(photos.length===1){$('pose').textContent='第 2 步 · 侧面，自然站立';$('cameraStatus').textContent='正面已拍摄。请侧身，再点击拍侧面。';updateCapture();}
+    else{$('pose').textContent='拍摄完成 · 请手动输入围度';stopCamera('两张照片已拍摄，相机已关闭。尚未实现自动测量，请用软尺测量并手动记录。');}
+  },1000);updateCapture();
+};
+function clearPhotos(){clearInterval(timer);timer=null;photos=[];$('shots').replaceChildren();$('pose').textContent='第 1 步 · 正面，自然站立';updateCapture();}
+$('clearPhotos').onclick=()=>{clearPhotos();$('cameraStatus').textContent='临时照片已清除，可以重新拍摄。';};
+// 切到后台即停止相机；真正离开页面时同时清除照片。
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera('页面已进入后台，相机已关闭。返回后请重新开启。');});
+window.addEventListener('pagehide',()=>{stopCamera();clearPhotos();});
+render();
+</script></body></html>
